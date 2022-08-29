@@ -1,0 +1,95 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use utf8;
+use feature qw/say/;
+binmode STDIN, ':utf8';
+binmode STDOUT, ':utf8';
+
+use Getopt::Long qw/GetOptions/;
+use List::AllUtils qw/max any nsort_by rev_nsort_by/;
+use Perl::Metrics::Halstead;
+use Perl::Metrics::Simple;
+use POSIX qw/floor/;
+
+my %defined_sort_options = (
+    mi => 'asc',
+    loc => 'desc',
+    cc => 'desc',
+    volume => 'desc',
+);
+
+my $sort_type = 'mi';
+GetOptions(
+    'sort=s' => \$sort_type,
+);
+
+my @sort_keys = keys %defined_sort_options;
+
+unless (any { $sort_type eq $_ } @sort_keys) {
+    my $msg = 'undefined sort type (must be ' . join(', ', @sort_keys) . ')';
+    die $msg;
+}
+
+my $analyzer = Perl::Metrics::Simple->new();
+
+my $results = [];
+
+for my $arg (@ARGV) {
+    if ($arg =~ /\.(pm|pl|t)$/) {
+        push @$results, calc_by_file($arg, $analyzer);
+    } else {
+        my @list = $analyzer->list_perl_files($arg);
+        push @$results, calc_by_files(\@list, $analyzer);
+    }
+}
+
+output($results, $sort_type) if @$results;
+
+sub calc_by_files {
+    my ($list_of_files, $analyzer) = @_;
+
+    my @results = ();
+    push @results, calc_by_file($_, $analyzer) for @$list_of_files;
+
+    return @results;
+}
+
+sub calc_by_file {
+    my ($path, $analyzer) = @_;
+
+    my $volume = Perl::Metrics::Halstead->new(file => $path)->volume;
+    my $analysis = $analyzer->analyze_files($path);
+
+    my $loc = $analysis->lines;
+
+    my $main_max_cc = $analysis->summary_stats->{main_complexity}->{max} // 0;
+    my $sub_max_cc  = $analysis->summary_stats->{sub_complexity}->{max} // 0;
+    my $max_cc = max($main_max_cc, $sub_max_cc);
+
+    # https://docs.microsoft.com/ja-jp/visualstudio/code-quality/code-metrics-maintainability-index-range-and-meaning?view=vs-2022
+    my $mi = max(0, (171 - 5.2 * log($volume) - 0.23 * $max_cc - 16.2 * log($loc)) * 100 / 171);
+
+    return +{
+        mi      => $mi,
+        loc     => $loc,
+        cc  => $max_cc,
+        volume  => $volume,
+        path    => $path,
+    };
+}
+
+sub output {
+    my ($results, $sort_type) = @_;
+    say "MI\tLoC\tmax_cc\tvolume\t\tpath";
+    say '--------------------------------------------------------------------------------';
+
+    my @sorted = $defined_sort_options{$sort_type} eq 'desc'
+        ? rev_nsort_by { $_->{$sort_type} } @$results
+        : nsort_by { $_->{$sort_type} } @$results;
+
+    for my $result (@sorted) {
+        my ($mi, $loc, $max_cc, $volume, $path) = @$result{qw/mi loc cc volume path/};
+        say sprintf("%0.2f\t%d\t%d\t%0.2f\t\t%s", $mi, $loc, $max_cc, $volume, $path);
+    }
+}

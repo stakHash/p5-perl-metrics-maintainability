@@ -36,12 +36,8 @@ my $analyzer = Perl::Metrics::Simple->new();
 my $results = [];
 
 for my $arg (@ARGV) {
-    if ($arg =~ /\.(pm|pl|t)$/) {
-        push @$results, calc_by_file($arg, $analyzer);
-    } else {
-        my @list = $analyzer->list_perl_files($arg);
-        push @$results, calc_by_files(\@list, $analyzer);
-    }
+    my @list = $analyzer->list_perl_files($arg);
+    push @$results, calc_by_files(\@list, $analyzer);
 }
 
 output($results, $sort_type) if @$results;
@@ -50,7 +46,11 @@ sub calc_by_files {
     my ($list_of_files, $analyzer) = @_;
 
     my @results = ();
-    push @results, calc_by_file($_, $analyzer) for @$list_of_files;
+
+    for my $file (@$list_of_files) {
+        my $result = calc_by_file($file, $analyzer);
+        push @results, $result if defined $result;
+    }
 
     return @results;
 }
@@ -58,7 +58,12 @@ sub calc_by_files {
 sub calc_by_file {
     my ($path, $analyzer) = @_;
 
-    my $volume = Perl::Metrics::Halstead->new(file => $path)->volume;
+    my $volume;
+    eval {
+        $volume = Perl::Metrics::Halstead->new(file => $path)->volume;
+    };
+    return if $@;
+
     my $analysis = $analyzer->analyze_files($path);
 
     my $loc = $analysis->lines;

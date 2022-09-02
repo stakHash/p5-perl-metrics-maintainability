@@ -7,10 +7,9 @@ binmode STDIN, ':utf8';
 binmode STDOUT, ':utf8';
 
 use Getopt::Long;
-use List::AllUtils qw/max any nsort_by rev_nsort_by/;
-use Perl::Metrics::Halstead;
-use Perl::Metrics::Simple;
-use POSIX qw/floor/;
+use List::AllUtils qw/any nsort_by rev_nsort_by/;
+use Perl::Metrics::Maintainability;
+
 
 exit main() unless caller;
 
@@ -33,14 +32,8 @@ sub main {
         die $msg;
     }
 
-    my $analyzer = Perl::Metrics::Simple->new();
-
-    my $results = [];
-
-    for my $path (@paths) {
-        my @list = $analyzer->list_perl_files($path);
-        push @$results, calc_by_files(\@list, $analyzer);
-    }
+    my $analyzer = Perl::Metrics::Maintainability->new(paths => \@paths);
+    my $results = $analyzer->analyze();
 
     return 1 unless @$results;
 
@@ -67,48 +60,6 @@ sub parse_options {
 
     return ($options, @args);
 
-}
-
-sub calc_by_files {
-    my ($list_of_files, $analyzer) = @_;
-
-    my @results = ();
-
-    for my $file (@$list_of_files) {
-        my $result = calc_by_file($file, $analyzer);
-        push @results, $result if defined $result;
-    }
-
-    return @results;
-}
-
-sub calc_by_file {
-    my ($path, $analyzer) = @_;
-
-    my $volume;
-    eval {
-        $volume = Perl::Metrics::Halstead->new(file => $path)->volume;
-    };
-    return if $@;
-
-    my $analysis = $analyzer->analyze_files($path);
-
-    my $loc = $analysis->lines;
-
-    my $main_max_cc = $analysis->summary_stats->{main_complexity}->{max} // 0;
-    my $sub_max_cc  = $analysis->summary_stats->{sub_complexity}->{max} // 0;
-    my $max_cc = max($main_max_cc, $sub_max_cc);
-
-    # https://docs.microsoft.com/ja-jp/visualstudio/code-quality/code-metrics-maintainability-index-range-and-meaning?view=vs-2022
-    my $mi = max(0, (171 - 5.2 * log($volume) - 0.23 * $max_cc - 16.2 * log($loc)) * 100 / 171);
-
-    return +{
-        mi      => $mi,
-        loc     => $loc,
-        cc      => $max_cc,
-        volume  => $volume,
-        path    => $path,
-    };
 }
 
 sub output {

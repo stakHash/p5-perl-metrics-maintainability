@@ -6,41 +6,68 @@ use feature qw/say/;
 binmode STDIN, ':utf8';
 binmode STDOUT, ':utf8';
 
-use Getopt::Long qw/GetOptions/;
+use Getopt::Long;
 use List::AllUtils qw/max any nsort_by rev_nsort_by/;
 use Perl::Metrics::Halstead;
 use Perl::Metrics::Simple;
 use POSIX qw/floor/;
 
-my %defined_sort_options = (
-    mi => 'asc',
-    loc => 'desc',
-    cc => 'desc',
-    volume => 'desc',
-);
+exit main() unless caller;
 
-my $sort_type = 'mi';
-GetOptions(
-    'sort=s' => \$sort_type,
-);
+sub main {
+    my ($options, @paths) = parse_options(@ARGV);
 
-my @sort_keys = keys %defined_sort_options;
+    my $defined_sort_options = +{
+        mi      => 'asc',
+        loc     => 'desc',
+        cc      => 'desc',
+        volume  => 'desc',
+    };
 
-unless (any { $sort_type eq $_ } @sort_keys) {
-    my $msg = 'undefined sort type (must be ' . join(', ', @sort_keys) . ')';
-    die $msg;
+    my @sort_keys = keys %$defined_sort_options;
+    $options->{sort} //= 'mi';
+
+    unless (any { $options->{sort} eq $_ } @sort_keys) {
+        #TODO: display usage
+        my $msg = 'undefined sort type (must be ' . join(', ', @sort_keys) . ')';
+        die $msg;
+    }
+
+    my $analyzer = Perl::Metrics::Simple->new();
+
+    my $results = [];
+
+    for my $path (@paths) {
+        my @list = $analyzer->list_perl_files($path);
+        push @$results, calc_by_files(\@list, $analyzer);
+    }
+
+    return 1 unless @$results;
+
+    output($results, $options->{sort}, $defined_sort_options);
+    return 0;
 }
 
-my $analyzer = Perl::Metrics::Simple->new();
+sub parse_options {
+    my (@args) = @_;
 
-my $results = [];
+    #TODO: display usage
+    return undef unless @args;
 
-for my $arg (@ARGV) {
-    my @list = $analyzer->list_perl_files($arg);
-    push @$results, calc_by_files(\@list, $analyzer);
+    my $options = +{};
+
+    unless (Getopt::Long::Parser->new()->getoptionsfromarray(
+        \@args,
+        $options,
+        'sort:s',
+    )) {
+        #TODO: display usage
+        return undef;
+    }
+
+    return ($options, @args);
+
 }
-
-output($results, $sort_type) if @$results;
 
 sub calc_by_files {
     my ($list_of_files, $analyzer) = @_;
@@ -78,18 +105,18 @@ sub calc_by_file {
     return +{
         mi      => $mi,
         loc     => $loc,
-        cc  => $max_cc,
+        cc      => $max_cc,
         volume  => $volume,
         path    => $path,
     };
 }
 
 sub output {
-    my ($results, $sort_type) = @_;
+    my ($results, $sort_type, $defined_sort_options) = @_;
     say "MI\tLoC\tmax_cc\tvolume\t\tpath";
     say '--------------------------------------------------------------------------------';
 
-    my @sorted = $defined_sort_options{$sort_type} eq 'desc'
+    my @sorted = $defined_sort_options->{$sort_type} eq 'desc'
         ? rev_nsort_by { $_->{$sort_type} } @$results
         : nsort_by { $_->{$sort_type} } @$results;
 

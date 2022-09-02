@@ -8,6 +8,10 @@ use List::AllUtils qw/all max/;
 use Perl::Metrics::Halstead;
 use Perl::Metrics::Simple;
 
+use namespace::clean;
+
+our $VERSION = 0.10;
+
 has analyzer => (
     is => 'lazy',
     builder => 1,

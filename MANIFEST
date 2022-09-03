@@ -1,0 +1,5 @@
+bin/perlmi
+Build.PL
+lib/Perl/Metrics/Maintainability.pm
+lib/Perl/Metrics/Maintainability/Result.pm
+MANIFEST			This list of files

@@ -15,6 +15,9 @@ Module::Build->new(
         'Perl::Metrics::Halstead' => 0.06,
         'Perl::Metrics::Simple'   => 'v1.0.1',
     },
+    build_requires => {
+        'Module::Build' => 0.42,
+    },
     script_files => { 'bin/perlmi' => 1, },
     add_to_cleanup => [ '*.tar.gz', 'Makefile', 'Makefile.old' ],
     meta_merge     => {

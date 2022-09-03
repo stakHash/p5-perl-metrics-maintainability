@@ -64,7 +64,7 @@ sub parse_options {
 
 sub output {
     my ($results, $sort_type, $defined_sort_options) = @_;
-    say "MI\tLoC\tmax_cc\tvolume\t\tpath";
+    say "MI\tLoC\tcc\tvolume\t\tpath";
     say '--------------------------------------------------------------------------------';
 
     my @sorted = $defined_sort_options->{$sort_type} eq 'desc'
@@ -72,7 +72,13 @@ sub output {
         : nsort_by { $_->{$sort_type} } @$results;
 
     for my $result (@sorted) {
-        my ($mi, $loc, $max_cc, $volume, $path) = @$result{qw/mi loc cc volume path/};
-        say sprintf("%0.2f\t%d\t%d\t%0.2f\t\t%s", $mi, $loc, $max_cc, $volume, $path);
+        say sprintf(
+            "%0.2f\t%d\t%d\t%0.2f\t\t%s",
+            $result->mi,
+            $result->loc,
+            $result->cc,
+            $result->volume,
+            $result->path,
+        );
     }
 }

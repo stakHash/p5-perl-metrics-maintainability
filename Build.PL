@@ -10,6 +10,7 @@ Module::Build->new(
     configure_requires => { 'Module::Build' => 0.42 },
     requires           => {
         'Moo'                     => 2.0,
+        'Moose'                   => 2.22,
         'List::AllUtils'          => 0.19,
         'Getopt::Long'            => 2.52,
         'Perl::Metrics::Halstead' => 0.06,

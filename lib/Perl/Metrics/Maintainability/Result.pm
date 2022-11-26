@@ -5,52 +5,54 @@ use strict;
 use warnings;
 
 use Moo;
-use Scalar::Util qw/looks_like_number/;
-
+use List::AllUtils qw/all nsort_by rev_nsort_by/;
 use namespace::clean;
-
 our $VERSION = 0.10;
 
-has mi => (
-    is  => 'ro',
+has results => (
+    is => 'rwp',
     isa => sub {
-        die "$_[0] must be a number between 0 and 100"
-            unless looks_like_number($_[0]) && $_[0] >= 0 && $_[0] <= 100;
+        my $type = ref $_[0];
+        die 'results must be ARREYREF of Perl::Metrics::Maintainability::File::Result'
+            unless defined $type
+                && $type eq 'ARRAY'
+                && all { $_->meta->name eq 'Perl::Metrics::Maintainability::File::Result' } @{$_[0]}
     },
     required => 1,
 );
 
-has loc => (
-    is  => 'ro',
-    isa => sub {
-        die "$_[0] must be a number larger than 0"
-            unless looks_like_number($_[0]) && $_[0] > 0;
-    },
-    required => 1,
-);
+sub has_results {
+    my ($self,) = @_;
+    return scalar(grep { $_->is_valid } @{$self->results}) > 0
+}
 
-has volume => (
-    is  => 'ro',
-    isa => sub {
-        die "$_[0] must be a number larger than 0"
-            unless looks_like_number($_[0]) && $_[0] > 0;
-    },
-    required => 1,
-);
+sub sort {
+    my ($self, $key, $direction) = @_;
 
-has cc => (
-    is  => 'ro',
-    isa => sub {
-        die "$_[0] must be a number larger than 0"
-            unless looks_like_number($_[0]) && $_[0] > 0;
-    },
-    required => 1,
-);
+    $self->_set_results([
+        $direction eq 'desc'
+            ? rev_nsort_by { $_->$key } @{$self->results}
+            : nsort_by { $_->$key } @{$self->results}
+    ]);
 
-has path => (
-    is  => 'ro',
-    required => 1,
-);
+    return $self;
+}
+
+sub inflate_text {
+    my ($self,) = @_;
+    my $text = "MI\tLoC\tcc\tvolume\t\tpath\n--------------------------------------------------------------------------------\n";
+    for my $result (@{$self->results}) {
+        $text = $text . sprintf(
+            "%0.2f\t%d\t%d\t%0.2f\t\t%s\n",
+            $result->mi,
+            $result->loc,
+            $result->cc,
+            $result->volume,
+            $result->path,
+        );
+    }
+    return $text;
+}
 
 1;
 __END__

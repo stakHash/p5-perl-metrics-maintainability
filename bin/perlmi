@@ -10,7 +10,6 @@ use Getopt::Long;
 use List::AllUtils qw/any nsort_by rev_nsort_by/;
 use Perl::Metrics::Maintainability;
 
-
 exit main() unless caller;
 
 sub main {
@@ -33,11 +32,11 @@ sub main {
     }
 
     my $analyzer = Perl::Metrics::Maintainability->new(paths => \@paths);
-    my $results = $analyzer->analyze();
+    my $result = $analyzer->analyze();
 
-    return 1 unless @$results;
+    return 1 unless defined $result && $result->has_results;
 
-    output($results, $options->{sort}, $defined_sort_options);
+    output($result, $options->{sort}, $defined_sort_options);
     return 0;
 }
 
@@ -63,22 +62,6 @@ sub parse_options {
 }
 
 sub output {
-    my ($results, $sort_type, $defined_sort_options) = @_;
-    say "MI\tLoC\tcc\tvolume\t\tpath";
-    say '--------------------------------------------------------------------------------';
-
-    my @sorted = $defined_sort_options->{$sort_type} eq 'desc'
-        ? rev_nsort_by { $_->{$sort_type} } @$results
-        : nsort_by { $_->{$sort_type} } @$results;
-
-    for my $result (@sorted) {
-        say sprintf(
-            "%0.2f\t%d\t%d\t%0.2f\t\t%s",
-            $result->mi,
-            $result->loc,
-            $result->cc,
-            $result->volume,
-            $result->path,
-        );
-    }
+    my ($result, $sort_type, $defined_sort_options) = @_;
+    say $result->sort($sort_type, $defined_sort_options->{$sort_type})->inflate_text;
 }

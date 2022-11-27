@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Moo;
-use List::AllUtils qw/max/;
+use List::AllUtils qw/max sum0/;
 use Perl::Metrics::Halstead;
 use Perl::Metrics::Maintainability::File::Result;
 
@@ -47,9 +47,10 @@ sub analyze {
 sub _calc_cc {
     my ($self, $analysis) = @_;
 
-    my $main_max_cc = $analysis->summary_stats->{main_complexity}->{max} // 0;
-    my $sub_max_cc  = $analysis->summary_stats->{sub_complexity}->{max} // 0;
-    return max($main_max_cc, $sub_max_cc);
+    my $main_cc_sum = sum0 @{$analysis->summary_stats->{main_complexity}->{sorted_values}};
+    my $sub_cc_sum  = sum0 @{$analysis->summary_stats->{sub_complexity}->{sorted_values}};
+
+    return $main_cc_sum + $sub_cc_sum;
 }
 
 # https://docs.microsoft.com/ja-jp/visualstudio/code-quality/code-metrics-maintainability-index-range-and-meaning?view=vs-2022

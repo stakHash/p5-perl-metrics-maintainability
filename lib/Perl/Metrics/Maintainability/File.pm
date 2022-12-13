@@ -1,5 +1,4 @@
 package Perl::Metrics::Maintainability::File;
-use v5.36;
 use strict;
 use warnings;
 

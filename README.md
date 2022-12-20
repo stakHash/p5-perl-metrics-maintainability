@@ -8,3 +8,19 @@ Analyze [maintainability index](https://learn.microsoft.com/en-us/visualstudio/c
 $ perl ./Build.pl
 $ ./Build install  #=> 'perlmi' script will be installed
 ```
+
+## Usage
+
+```shell
+$ perlmi [OPTIONS] PATHS [PATHS...]
+```
+
+### Options
+
+```
+--sort    specify sort key
+            mi, loc, cc, volume (default: mi)
+--output  specify output type
+            text, csv (defualt: text)
+```
+

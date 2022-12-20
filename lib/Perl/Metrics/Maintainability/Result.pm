@@ -37,12 +37,18 @@ sub sort {
     return $self;
 }
 
+sub DEFINED_OUTPUT_TYPE {
+    my ($self,) = @_;
+    my @methods = $self->meta->get_method_list;
+    return map { substr($_, 8) } grep { $_ =~ /^inflate_/ } @methods
+}
+
 sub inflate_text {
     my ($self,) = @_;
-    my $text = "MI\tLoC\tcc\tvolume\t\tpath\n--------------------------------------------------------------------------------\n";
+    my $text = "MI\tLoC\tcc\tvolume\t\tpath\n--------------------------------------------------------------------------------";
     for my $result (@{$self->results}) {
         $text = $text . sprintf(
-            "%0.2f\t%d\t%d\t%0.2f\t\t%s\n",
+            "\n%0.2f\t%d\t%d\t%0.2f\t\t%s",
             $result->mi,
             $result->loc,
             $result->cc,
@@ -51,6 +57,22 @@ sub inflate_text {
         );
     }
     return $text;
+}
+
+sub inflate_csv {
+    my ($self,) = @_;
+    my $csv = "MI,LoC,cc,volume,path";
+    for my $result (@{$self->results}) {
+        my @row = (
+            $result->mi,
+            $result->loc,
+            $result->cc,
+            $result->volume,
+            $result->path,
+        );
+        $csv = $csv . "\n" . join(',', @row);
+    }
+    return $csv;
 }
 
 1;

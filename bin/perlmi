@@ -9,6 +9,7 @@ binmode STDOUT, ':utf8';
 use Getopt::Long;
 use List::AllUtils qw/any nsort_by rev_nsort_by/;
 use Perl::Metrics::Maintainability;
+use Perl::Metrics::Maintainability::Result;
 
 exit main() unless caller;
 
@@ -31,12 +32,19 @@ sub main {
         die $msg;
     }
 
+    $options->{output} //= 'text';
+    unless (any { $options->{output} eq $_ } Perl::Metrics::Maintainability::Result->DEFINED_OUTPUT_TYPE) {
+        #TODO: display usage
+        my $msg = 'undefined output type (must be ' . join(', ', Perl::Metrics::Maintainability::Result->DEFINED_OUTPUT_TYPE) . ')';
+        die $msg;
+    }
+
     my $analyzer = Perl::Metrics::Maintainability->new(paths => \@paths);
     my $result = $analyzer->analyze();
 
     return 1 unless defined $result && $result->has_results;
 
-    output($result, $options->{sort}, $defined_sort_options);
+    output($result, $options->{sort}, $defined_sort_options, $options->{output});
     return 0;
 }
 
@@ -52,6 +60,7 @@ sub parse_options {
         \@args,
         $options,
         'sort:s',
+        'output:s',
     )) {
         #TODO: display usage
         return undef;
@@ -62,6 +71,7 @@ sub parse_options {
 }
 
 sub output {
-    my ($result, $sort_type, $defined_sort_options) = @_;
-    say $result->sort($sort_type, $defined_sort_options->{$sort_type})->inflate_text;
+    my ($result, $sort_type, $defined_sort_options, $output_type) = @_;
+    my $inflate_method = 'inflate_' . $output_type;
+    say $result->sort($sort_type, $defined_sort_options->{$sort_type})->$inflate_method();
 }
